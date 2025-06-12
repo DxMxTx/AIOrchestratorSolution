@@ -9,6 +9,13 @@
 
 <button class="btn btn-primary" @onclick="IncrementCount">Click me</button>
 
+<SfButton Content="Click me"
+          OnClick="IncrementCount"
+          CssClass="e-primary"
+          IsPrimary="true"
+          Style="margin-top: 15px;"></SfButton>
+
+
 @code {
     private int currentCount = 0;
 

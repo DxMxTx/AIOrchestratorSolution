@@ -1,8 +1,12 @@
 ﻿@page "/"
+@rendermode InteractiveServer
 @inject Kernel Kernel // Inyecta el objeto Kernel de Semantic Kernel
+@using Microsoft.SemanticKernel.ChatCompletion // Para tipos relacionados con el chat
+@using System.Diagnostics 
 
 <h1>¡Bienvenido a tu Orquestador de IA!</h1>
 <p>Vamos a probar Semantic Kernel para generar texto.</p>
+<p role="status">Current count: @currentCount</p>
 
 <SfTextBox Placeholder="Escribe tu prompt aquí..."
            @bind-Value="@userPrompt"
@@ -13,6 +17,12 @@
 
 <SfButton Content="Generar Respuesta (con IA)"
           OnClick="GenerateResponse"
+          CssClass="e-primary"
+          IsPrimary="true"
+          Style="margin-top: 15px;"></SfButton>
+
+<SfButton Content="Click me"
+          OnClick="IncrementCount"
           CssClass="e-primary"
           IsPrimary="true"
           Style="margin-top: 15px;"></SfButton>
@@ -38,26 +48,39 @@
     private string errorMessage = "";
     private IChatCompletionService _chatCompletionService;
 
+    private int currentCount = 0;
+
+    private void IncrementCount()
+    {
+        currentCount++;
+    }
+
     protected override void OnInitialized()
     {
         // Este método se llama cuando el componente se inicializa
         // Obtener el servicio de chat del Kernel inyectado
         _chatCompletionService = Kernel.GetRequiredService<IChatCompletionService>();
+        System.Diagnostics.Debug.WriteLine("Home.razor: OnInitialized - _chatCompletionService inicializado."); // Log de depuración
     }
 
     private async Task GenerateResponse()
     {
+        System.Diagnostics.Debug.WriteLine($"Home.razor: GenerateResponse llamado. userPrompt: '{userPrompt}'"); // Log de depuración
+
         aiResponse = ""; // Limpia la respuesta anterior
         errorMessage = ""; // Limpia cualquier error anterior
 
         if (string.IsNullOrWhiteSpace(userPrompt))
         {
             errorMessage = "Por favor, introduce un prompt.";
+            System.Diagnostics.Debug.WriteLine("Home.razor: userPrompt está vacío."); // Log de depuración
+            StateHasChanged(); // Fuerza la actualización de la UI para mostrar el error
             return;
         }
 
         try
         {
+            System.Diagnostics.Debug.WriteLine("Home.razor: Intentando llamar al servicio de IA..."); // Log de depuración
             // Crear un historial de chat para darle contexto a la IA
             var chatHistory = new ChatHistory();
             chatHistory.AddSystemMessage("Eres un asistente útil que responde de manera concisa y clara. Siempre debes ser respetuoso."); // Instrucción inicial a la IA
@@ -66,11 +89,18 @@
             // Realizar la llamada a la IA a través de Semantic Kernel
             var result = await _chatCompletionService.GetChatMessageContentAsync(chatHistory);
             aiResponse = result.Content; // Obtener la respuesta de la IA
+            System.Diagnostics.Debug.WriteLine($"Home.razor: Respuesta de IA recibida. Longitud: {aiResponse?.Length ?? 0}"); // Log de depuración
         }
         catch (Exception ex)
         {
             errorMessage = $"Ocurrió un error al contactar a la IA: {ex.Message}";
+            System.Diagnostics.Debug.WriteLine($"Home.razor: ERROR - {ex.Message}"); // Log de depuración
             // En una aplicación real, aquí también podrías loguear el error en un sistema de logs
+        }
+        finally
+        {
+             // Asegura que la UI se actualice después de intentar generar la respuesta o atrapar un error
+             StateHasChanged();
         }
     }
 }

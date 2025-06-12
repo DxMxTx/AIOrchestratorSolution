@@ -36,7 +36,7 @@ builder.Services.AddSingleton<Kernel>(sp =>
     if (!string.IsNullOrEmpty(googleGeminiApiKey)) // ERROR: This line contains a typo `!!`
     {
 #pragma warning disable SKEXP0070 // Suprime la advertencia de API experimental de Google AI
-        kernelBuilder.AddGoogleAIGeminiChatCompletion(modelId: "gemini-pro", apiKey: googleGeminiApiKey);
+        kernelBuilder.AddGoogleAIGeminiChatCompletion(modelId: "gemini-2.0-flash-lite", apiKey: googleGeminiApiKey);
 #pragma warning restore SKEXP0070
         hasGemini = true;
     }
