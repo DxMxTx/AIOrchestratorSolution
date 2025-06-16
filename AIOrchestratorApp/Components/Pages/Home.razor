@@ -1,6 +1,172 @@
 ﻿@page "/"
 @rendermode InteractiveServer
 @using Microsoft.SemanticKernel
+@inject Kernel Kernel
+
+<PageTitle>Orquestador de UI v2</PageTitle>
+
+<div style="max-width: 900px; margin: auto; font-family: sans-serif;">
+
+    <h1>Orquestador de UI con Refinamiento</h1>
+    <p>Introduce una idea, genera el código y luego pide modificaciones para refinarlo.</p>
+
+    <div style="display: flex; gap: 8px; margin-top: 20px;">
+        <input @bind="userInput" placeholder="Describe la UI que quieres construir..." @onkeyup="HandleInitialKeyUp" disabled="@isLoading" style="flex-grow: 1; padding: 10px; border-radius: 8px; border: 1px solid #ccc;" />
+        <button @onclick="InvokeInitialGeneration" disabled="@isLoading" style="padding: 10px 20px; border: none; background-color: #007bff; color: white; border-radius: 8px; cursor: pointer;">
+            @if (isLoading && activeProcess == "generation")
+            {
+                <span>Generando...</span>
+            }
+            else
+            {
+
+                <span>Generar</span>
+            }
+        </button>
+    </div>
+
+    @if (orchestrationLog.Any())
+    {
+        <div style="margin-top: 30px; border: 1px solid #eee; border-radius: 8px; padding: 20px;">
+            <h3>Proceso de Orquestación:</h3>
+            @foreach (var step in orchestrationLog)
+            {
+                <div style="margin-top: 15px; padding: 10px; border-left: 4px solid @step.Color; background-color: #f8f9fa;">
+                    <h4 style="margin-top:0;">@step.Title</h4>
+                    <pre style="white-space: pre-wrap; font-family: monospace; background-color: #fff; padding: 10px; border-radius: 5px; border: 1px solid #ddd;"><code>@step.Content</code></pre>
+                </div>
+            }
+        </div>
+    }
+
+    @if (!string.IsNullOrWhiteSpace(generatedCode))
+    {
+        <hr style="margin: 30px 0;" />
+        <h3>Paso 4: Refinar el Resultado</h3>
+        <p>¿No es perfecto? Pide un cambio:</p>
+        <div style="display: flex; gap: 8px; margin-top: 10px;">
+            <input @bind="modificationRequest" placeholder="Ej: 'añade un botón de cancelar' o 'cambia el color del título a rojo'" @onkeyup="HandleRefinementKeyUp" disabled="@isLoading" style="flex-grow: 1; padding: 10px; border-radius: 8px; border: 1px solid #ccc;" />
+            <sfbutton @onclick="InvokeRefinement" disabled="@isLoading" style="padding: 10px 20px; border: none; background-color: #fd7e14; color: white; border-radius: 8px; cursor: pointer;">
+                @if (isLoading && activeProcess == "refinement")
+                {
+                    <span>Refinando...</span>
+                }
+                else
+                {
+
+                    <span>Refinar</span>
+                }
+            </sfbutton>
+        </div>
+    }
+
+</div>
+
+@code {
+    private string userInput = string.Empty;
+    private string modificationRequest = string.Empty;
+    private string generatedCode = string.Empty;
+    private string activeProcess = string.Empty;
+
+    private bool isLoading = false;
+    private List<OrchestrationStep> orchestrationLog = new();
+
+    public record OrchestrationStep(string Title, string Content, string Color);
+
+    private async Task HandleInitialKeyUp(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter" && !isLoading) await InvokeInitialGeneration();
+    }
+
+    private async Task HandleRefinementKeyUp(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter" && !isLoading) await InvokeRefinement();
+    }
+
+    private async Task InvokeInitialGeneration()
+    {
+        if (string.IsNullOrWhiteSpace(userInput) || isLoading) return;
+
+        isLoading = true;
+        activeProcess = "generation";
+        orchestrationLog.Clear();
+        generatedCode = string.Empty;
+        var userIdea = userInput;
+        userInput = string.Empty;
+
+        try
+        {
+            orchestrationLog.Add(new OrchestrationStep("Paso 1: Petición de Usuario", userIdea, "#007bff"));
+            await InvokeAsync(StateHasChanged);
+
+            var designFunction = Kernel.Plugins["DesignPlugin"]["GenerateConcept"];
+            var designResult = await Kernel.InvokeAsync(designFunction, new() { ["idea"] = userIdea });
+            var designConcept = designResult.GetValue<string>() ?? "Error";
+            orchestrationLog.Add(new OrchestrationStep("Paso 2: Concepto de Diseño Generado", designConcept, "#e83e8c"));
+            await InvokeAsync(StateHasChanged);
+
+            var codeFunction = Kernel.Plugins["CodePlugin"]["GenerateCode"];
+            var codeResult = await Kernel.InvokeAsync(codeFunction, new() { ["design_concept"] = designConcept });
+            generatedCode = codeResult.GetValue<string>() ?? "Error";
+            orchestrationLog.Add(new OrchestrationStep("Paso 3: Código Resultante", generatedCode, "#28a745"));
+        }
+        catch (Exception ex)
+        {
+            orchestrationLog.Add(new OrchestrationStep("Error en la Orquestación", ex.Message, "#dc3545"));
+        }
+        finally
+        {
+            isLoading = false;
+            activeProcess = string.Empty;
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private async Task InvokeRefinement()
+    {
+        if (string.IsNullOrWhiteSpace(modificationRequest) || string.IsNullOrWhiteSpace(generatedCode) || isLoading) return;
+
+        isLoading = true;
+        activeProcess = "refinement";
+
+        try
+        {
+            var request = modificationRequest;
+            modificationRequest = string.Empty;
+
+            orchestrationLog.Add(new OrchestrationStep("Paso 4: Petición de Refinamiento", request, "#fd7e14"));
+            await InvokeAsync(StateHasChanged);
+
+            var refinementFunction = Kernel.Plugins["RefinementPlugin"]["ModifyCode"];
+            var arguments = new KernelArguments
+            {
+                ["existing_code"] = generatedCode,
+                ["modification_request"] = request
+            };
+            var refinementResult = await Kernel.InvokeAsync(refinementFunction, arguments);
+
+            generatedCode = refinementResult.GetValue<string>() ?? "Error";
+
+            // Reemplazar el último paso del log (el código antiguo) con el nuevo código refinado.
+            orchestrationLog.RemoveAt(orchestrationLog.Count - 1);
+            orchestrationLog.Add(new OrchestrationStep("Paso 5: Código Refinado", generatedCode, "#17a2b8"));
+        }
+        catch (Exception ex)
+        {
+            orchestrationLog.Add(new OrchestrationStep("Error en el Refinamiento", ex.Message, "#dc3545"));
+        }
+        finally
+        {
+            isLoading = false;
+            activeProcess = string.Empty;
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+}
+
+@* @page "/"
+@rendermode InteractiveServer
+@using Microsoft.SemanticKernel
 @using System.Text.Json
 @inject Kernel Kernel 
 
@@ -13,7 +179,7 @@
 
     <div style="display: flex; gap: 8px; margin-top: 20px;">
         <input @bind="userInput" placeholder="Describe la UI que quieres construir..." @onkeyup="HandleKeyUp" disabled="@isLoading" style="flex-grow: 1; padding: 10px; border-radius: 8px; border: 1px solid #ccc;" />
-        <button @onclick="InvokeOrchestrator" disabled="@isLoading" style="padding: 10px 20px; border: none; background-color: #007bff; color: white; border-radius: 8px; cursor: pointer;">
+        <sfbutton @onclick="InvokeOrchestrator" disabled="@isLoading" style="padding: 10px 20px; border: none; background-color: #007bff; color: white; border-radius: 8px; cursor: pointer;">
             @if (isLoading)
             {
                     <span>Orquestando...</span>
@@ -22,7 +188,7 @@
             {
                     <span>Generar</span>
             }
-        </button>
+        </sfbutton>
     </div>
 
     @if (orchestrationLog.Any())
@@ -44,9 +210,6 @@
     private string userInput = string.Empty;
     private bool isLoading = false;
     private List<OrchestrationStep> orchestrationLog = new();
-
-    // PASO 2: Eliminar la variable "kernel" y el método OnInitialized().
-    // Ya no son necesarios porque el Kernel se inyecta.
 
     public record OrchestrationStep(string Title, string Content, string Color);
 
@@ -72,11 +235,9 @@
 
         try
         {
-            // --- PASO 1: GENERAR EL CONCEPTO DE DISEÑO ---
             orchestrationLog.Add(new OrchestrationStep("Paso 1: Petición de Usuario", userIdea, "#007bff"));
             StateHasChanged();
 
-            // PASO 3: Usar la propiedad "Kernel" inyectada (con K mayúscula)
             var designFunction = Kernel.Plugins["DesignPlugin"]["GenerateConcept"];
             var designResult = await Kernel.InvokeAsync(designFunction, new() { ["idea"] = userIdea });
 
@@ -84,12 +245,11 @@
             orchestrationLog.Add(new OrchestrationStep("Paso 2: Concepto de Diseño Generado", designConcept, "#e83e8c"));
             StateHasChanged();
 
-            // --- PASO 2: GENERAR EL CÓDIGO ---
             var codeFunction = Kernel.Plugins["CodePlugin"]["GenerateCode"];
             var codeResult = await Kernel.InvokeAsync(codeFunction, new() { ["design_concept"] = designConcept });
 
             var generatedCode = codeResult.GetValue<string>() ?? "Error: No se pudo generar el código.";
-            orchestrationLog.Add(new OrchestrationStep("Paso 3: Código Blazor Resultante", generatedCode, "#28a745"));
+            orchestrationLog.Add(new OrchestrationStep("Paso 3: Código App Resultante", generatedCode, "#28a745"));
         }
         catch (Exception ex)
         {
@@ -102,3 +262,4 @@
         }
     }
 }
+ *@

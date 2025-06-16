@@ -52,7 +52,7 @@ builder.Services.AddSingleton<Kernel>(sp =>
     //kernel.ImportPluginFromPromptDirectory(pluginsDirectory, "CodePlugin");
     kernel.ImportPluginFromPromptDirectory(Path.Combine(pluginsDirectory, "DesignPlugin"), "DesignPlugin");
     kernel.ImportPluginFromPromptDirectory(Path.Combine(pluginsDirectory, "CodePlugin"), "CodePlugin");
-
+    kernel.ImportPluginFromPromptDirectory(Path.Combine(pluginsDirectory, "RefinementPlugin"), "RefinementPlugin");
 
     return kernel;
 });
