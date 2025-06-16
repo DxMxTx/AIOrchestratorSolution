@@ -1,0 +1,22 @@
+{
+  "schema": 1,
+  "type": "prompt_template",
+  "description": "Genera un concepto de diseño detallado para un componente de UI a partir de una idea simple del usuario.",
+  "template_format": "semantic-kernel",
+  "input_variables": [
+    {
+      "name": "idea",
+      "description": "La idea o petición inicial del usuario.",
+      "required": true
+    }
+  ],
+  "execution_settings": {
+    "default": {
+      "max_tokens": 500,
+      "temperature": 0.5,
+      "top_p": 1.0,
+      "presence_penalty": 0.0,
+      "frequency_penalty": 0.0
+    }
+  }
+}

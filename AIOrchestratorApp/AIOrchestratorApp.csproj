@@ -4,13 +4,17 @@
     <TargetFramework>net8.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
+	<NoWarn>$(NoWarn);SKEXP0060;SKEXP0110;SKEXP0070;</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.SemanticKernel" Version="1.56.0" />
-    <PackageReference Include="Microsoft.SemanticKernel.Connectors.Google" Version="1.56.0-alpha" />
-    <PackageReference Include="Microsoft.SemanticKernel.Connectors.Ollama" Version="1.56.0-alpha" />
-    <PackageReference Include="Microsoft.SemanticKernel.Connectors.OpenAI" Version="1.56.0" />
+    <PackageReference Include="Microsoft.SemanticKernel" Version="1.57.0" />
+    <PackageReference Include="Microsoft.SemanticKernel.Agents.Abstractions" Version="1.57.0" />
+    <PackageReference Include="Microsoft.SemanticKernel.Agents.Core" Version="1.57.0" />
+    <PackageReference Include="Microsoft.SemanticKernel.Agents.Runtime.Core" Version="1.57.0-preview" />
+    <PackageReference Include="Microsoft.SemanticKernel.Connectors.Google" Version="1.57.0-alpha" />
+    <PackageReference Include="Microsoft.SemanticKernel.Connectors.Ollama" Version="1.57.0-alpha" />
+    <PackageReference Include="Microsoft.SemanticKernel.Connectors.OpenAI" Version="1.57.0" />
     <PackageReference Include="Syncfusion.Blazor.Buttons" Version="29.2.10" />
     <PackageReference Include="Syncfusion.Blazor.Inputs" Version="29.2.10" />
     <PackageReference Include="Syncfusion.Blazor.Themes" Version="29.2.10" />

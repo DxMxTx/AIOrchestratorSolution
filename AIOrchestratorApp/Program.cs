@@ -1,16 +1,15 @@
 using AIOrchestratorApp.Components;
 using Syncfusion.Blazor;
-using Microsoft.SemanticKernel; // Esta es para la clase Kernel
-using Microsoft.SemanticKernel.ChatCompletion; // Para IChatCompletionService
-using Microsoft.SemanticKernel.Connectors.OpenAI; // Si usas OpenAI
-using Microsoft.SemanticKernel.Connectors.Google; // ¡Esta es la clave para AddGoogleAIGeminiChatCompletion!
+using Microsoft.SemanticKernel;
+using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.Components.Web;
 using Microsoft.Extensions.Configuration;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
-builder.Services.AddRazorComponents()
-    .AddInteractiveServerComponents();
+builder.Services.AddRazorPages();
+builder.Services.AddServerSideBlazor();
 
 // Leer las claves de API desde la configuración de appsettings.json
 var openAIApiKey = builder.Configuration["AISettings:OpenAIApiKey"];
@@ -21,40 +20,47 @@ builder.Services.AddSingleton<Kernel>(sp =>
 {
     var kernelBuilder = Kernel.CreateBuilder();
 
-    bool hasOpenAI = false; // <<< AÑADE ESTA LÍNEA
+    bool hasOpenAI = false;
     // Añadir el modelo de OpenAI si la clave existe y no es nula/vacía
     if (!string.IsNullOrEmpty(openAIApiKey))
     {
         kernelBuilder.AddOpenAIChatCompletion(
-            modelId: "gpt-4o", // Puedes usar "gpt-3.5-turbo", "gpt-4", o "gpt-4o"
+            modelId: "gpt-4o",
             apiKey: openAIApiKey);
-        hasOpenAI = true; // <<< Y ESTA
+        hasOpenAI = true;
     }
 
-    bool hasGemini = false; // <<< AÑADE ESTA LÍNEA
+    bool hasGemini = false;
     // Añadir el modelo de Google Gemini si la clave existe y no es nula/vacía
-    if (!string.IsNullOrEmpty(googleGeminiApiKey)) // ERROR: This line contains a typo `!!`
+    if (!string.IsNullOrEmpty(googleGeminiApiKey))
     {
-#pragma warning disable SKEXP0070 // Suprime la advertencia de API experimental de Google AI
-        kernelBuilder.AddGoogleAIGeminiChatCompletion(modelId: "gemini-2.0-flash-lite", apiKey: googleGeminiApiKey);
-#pragma warning restore SKEXP0070
+        kernelBuilder.AddGoogleAIGeminiChatCompletion(
+            modelId: "gemini-1.5-flash", 
+            apiKey: googleGeminiApiKey); 
         hasGemini = true;
     }
 
     var kernel = kernelBuilder.Build();
 
-    // Asegúrate de que al menos un modelo esté configurado. Si no hay claves, lanzará una excepción.
     if (!hasOpenAI && !hasGemini)
     {
         throw new InvalidOperationException("No AI models were configured. Please check your API keys in appsettings.json.");
     }
-    // --- Fin Corrección ---
+
+    var pluginsDirectory = Path.Combine(Directory.GetCurrentDirectory(), "Plugins");
+    //kernel.ImportPluginFromPromptDirectory(pluginsDirectory, "DesignPlugin");
+    //kernel.ImportPluginFromPromptDirectory(pluginsDirectory, "CodePlugin");
+    kernel.ImportPluginFromPromptDirectory(Path.Combine(pluginsDirectory, "DesignPlugin"), "DesignPlugin");
+    kernel.ImportPluginFromPromptDirectory(Path.Combine(pluginsDirectory, "CodePlugin"), "CodePlugin");
+
 
     return kernel;
 });
 
-builder.Services.AddSyncfusionBlazor();
 
+
+builder.Services.AddSyncfusionBlazor();
+builder.Services.AddRazorComponents().AddInteractiveServerComponents();
 
 var app = builder.Build();
 
@@ -62,7 +68,6 @@ var app = builder.Build();
 if (!app.Environment.IsDevelopment())
 {
     app.UseExceptionHandler("/Error", createScopeForErrors: true);
-    // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
     app.UseHsts();
 }
 
