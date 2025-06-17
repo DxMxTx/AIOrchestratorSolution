@@ -1,22 +1,24 @@
 {
   "schema": 1,
   "type": "prompt_template",
-  "description": "Genera un concepto de diseño detallado y ESTRUCTURADO para un componente de UI a partir de una idea simple del usuario.",
+  "description": "Genera un plan de diseño JSON estructurado, ya sea desde una idea de texto o combinando una idea con un HTML de referencia.",
   "template_format": "semantic-kernel",
   "input_variables": [
     {
       "name": "idea",
       "description": "La idea o petición inicial del usuario.",
       "required": true
+    },
+    {
+      "name": "html_reference",
+      "description": "Opcional. El código HTML de una página web de referencia para inspirar la estructura.",
+      "required": false
     }
   ],
   "execution_settings": {
     "default": {
-      "max_tokens": 2000,
+      "max_tokens": 5000,
       "temperature": 0.2,
-      "top_p": 1.0,
-      "presence_penalty": 0.0,
-      "frequency_penalty": 0.0,
       "response_format": { "type": "json_object" }
     }
   }

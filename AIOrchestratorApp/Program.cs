@@ -1,65 +1,65 @@
 using AIOrchestratorApp.Components;
-using Syncfusion.Blazor;
-using Microsoft.SemanticKernel;
+using AIOrchestratorApp.NativePlugins;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Web;
 using Microsoft.Extensions.Configuration;
+using Microsoft.SemanticKernel;
+using Syncfusion.Blazor;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 builder.Services.AddRazorPages();
 builder.Services.AddServerSideBlazor();
+builder.Services.AddSyncfusionBlazor();
 
 // Leer las claves de API desde la configuración de appsettings.json
 var openAIApiKey = builder.Configuration["AISettings:OpenAIApiKey"];
 var googleGeminiApiKey = builder.Configuration["AISettings:GoogleGeminiApiKey"];
+
+// Soporte para HttpClientFactory, necesario para el WebAnalyzerPlugin
+builder.Services.AddHttpClient();
+builder.Services.AddSingleton<WebAnalyzerPlugin>();
 
 // Configurar Semantic Kernel
 builder.Services.AddSingleton<Kernel>(sp =>
 {
     var kernelBuilder = Kernel.CreateBuilder();
 
-    bool hasOpenAI = false;
-    // Añadir el modelo de OpenAI si la clave existe y no es nula/vacía
+    // --- PASO 1: AÑADIR LOS SERVICIOS DE IA ---
+    bool hasModel = false;
     if (!string.IsNullOrEmpty(openAIApiKey))
     {
-        kernelBuilder.AddOpenAIChatCompletion(
-            modelId: "gpt-4o",
-            apiKey: openAIApiKey);
-        hasOpenAI = true;
+        kernelBuilder.AddOpenAIChatCompletion(modelId: "gpt-4o", apiKey: openAIApiKey);
+        hasModel = true;
     }
 
-    bool hasGemini = false;
-    // Añadir el modelo de Google Gemini si la clave existe y no es nula/vacía
     if (!string.IsNullOrEmpty(googleGeminiApiKey))
     {
-        kernelBuilder.AddGoogleAIGeminiChatCompletion(
-            modelId: "gemini-2.0-flash-lite", 
-            apiKey: googleGeminiApiKey); 
-        hasGemini = true;
+        kernelBuilder.AddGoogleAIGeminiChatCompletion(modelId: "gemini-1.5-flash", apiKey: googleGeminiApiKey);
+        hasModel = true;
     }
 
-    var kernel = kernelBuilder.Build();
-
-    if (!hasOpenAI && !hasGemini)
+    if (!hasModel)
     {
-        throw new InvalidOperationException("No AI models were configured. Please check your API keys in appsettings.json.");
+        throw new InvalidOperationException("No se configuró ningún modelo de IA. Revisa tus claves de API en appsettings.json.");
     }
 
+
+    // Añadir el plugin nativo
+    kernelBuilder.Plugins.AddFromObject(sp.GetRequiredService<WebAnalyzerPlugin>());
+
+    // Añadir los plugins de prompts
     var pluginsDirectory = Path.Combine(Directory.GetCurrentDirectory(), "Plugins");
+    kernelBuilder.Plugins.AddFromPromptDirectory(Path.Combine(pluginsDirectory, "DesignPlugin"), "DesignPlugin");
+    kernelBuilder.Plugins.AddFromPromptDirectory(Path.Combine(pluginsDirectory, "StylingPlugin"), "StylingPlugin");
+    kernelBuilder.Plugins.AddFromPromptDirectory(Path.Combine(pluginsDirectory, "CodePlugin"), "CodePlugin");
+    kernelBuilder.Plugins.AddFromPromptDirectory(Path.Combine(pluginsDirectory, "RefinementPlugin"), "RefinementPlugin");
 
-    kernel.ImportPluginFromPromptDirectory(Path.Combine(pluginsDirectory, "DesignPlugin"), "DesignPlugin");
-    kernel.ImportPluginFromPromptDirectory(Path.Combine(pluginsDirectory, "CodePlugin"), "CodePlugin");
-    kernel.ImportPluginFromPromptDirectory(Path.Combine(pluginsDirectory, "RefinementPlugin"), "RefinementPlugin");
-    kernel.ImportPluginFromPromptDirectory(Path.Combine(pluginsDirectory, "StylingPlugin"), "StylingPlugin");
-
-    return kernel;
+    // --- PASO 3: CONSTRUIR EL KERNEL UNA SOLA VEZ, AL FINAL ---
+    return kernelBuilder.Build();
 });
 
-
-
-builder.Services.AddSyncfusionBlazor();
 builder.Services.AddRazorComponents().AddInteractiveServerComponents();
 
 var app = builder.Build();
@@ -72,7 +72,6 @@ if (!app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
-
 app.UseStaticFiles();
 app.UseAntiforgery();
 

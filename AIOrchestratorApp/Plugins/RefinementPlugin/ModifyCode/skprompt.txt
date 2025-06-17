@@ -18,7 +18,7 @@ SIN FORMATO MARKDOWN: NO envuelvas tu respuesta en un bloque de código de Markd
 
 Si el usuario te lo pide, deberás hacer las modificaciones pertinentes.
 
-No debere poner ```html al principio ni al final de la respuesta.
+No debes poner ```html al principio ni al final de la respuesta.
 
 CÓDIGO EXISTENTE: {{$existing_code}}
 PETICIÓN DE MODIFICACIÓN: {{$modification_request}}

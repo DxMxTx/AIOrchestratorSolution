@@ -17,7 +17,7 @@
   ],
   "execution_settings": {
     "default": {
-      "max_tokens": 2500,
+      "max_tokens": 3500,
       "temperature": 0.1,
       "top_p": 1.0,
       "presence_penalty": 0.0,

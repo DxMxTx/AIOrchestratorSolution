@@ -7,16 +7,17 @@
 @inject Kernel Kernel
 @inject IJSRuntime JSRuntime
 
-<PageTitle>Prototype IA v5</PageTitle>
+<PageTitle>Prototype IA v7</PageTitle>
 
 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 40px; max-width: 95%; margin: auto; font-family: sans-serif;">
 
     <div class="control-panel">
-        <h1>Prototype IA con Diseño Visual</h1>
-        <p>Describe una idea y un estilo visual. La IA creará un concepto, le aplicará un diseño y generará el código.</p>
+        <h1>Prototype IA con Inspiración</h1>
+        <p>Describe una idea o usa una URL como inspiración, define un estilo visual y deja que la IA construya el componente.</p>
 
         <div class="input-group" style="display: flex; flex-direction: column; gap: 15px; margin-top: 20px;">
-            <SfTextBox @bind-Value="userInput" Placeholder="Describe la UI que quieres construir..." FloatLabelType="FloatLabelType.Auto" Enabled="!isLoading"></SfTextBox>
+            <SfTextBox @bind-Value="userInput" Placeholder="Describe tu idea o los cambios sobre la URL..." FloatLabelType="FloatLabelType.Auto" Enabled="!isLoading"></SfTextBox>
+            <SfTextBox @bind-Value="inspirationUrl" Placeholder="URL de inspiración (opcional)" FloatLabelType="FloatLabelType.Auto" Enabled="!isLoading"></SfTextBox>
             <SfTextBox @bind-Value="styleRequest" Placeholder="Describe el estilo visual (ej: 'oscuro y moderno')" FloatLabelType="FloatLabelType.Auto" Enabled="!isLoading"></SfTextBox>
             <SfButton @onclick="InvokeInitialGeneration" IsPrimary="true" Disabled="@isLoading">
                 @if (isLoading && activeProcess == "generation")
@@ -25,6 +26,7 @@
                 }
                 else
                 {
+
                     <span>Generar</span>
                 }
             </SfButton>
@@ -34,9 +36,8 @@
         {
             <div class="refinement-section" style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee;">
                 <h3>Refinar el Resultado</h3>
-                <p>¿No es perfecto? Pide un cambio:</p>
                 <div style="display: flex; flex-direction: column; gap: 15px; margin-top: 10px;">
-                    <SfTextBox @bind-Value="modificationRequest" Placeholder="Ej: 'añade un botón de cancelar' o 'cambia el color del título a rojo'" FloatLabelType="FloatLabelType.Auto" Enabled="!isLoading"></SfTextBox>
+                    <SfTextBox @bind-Value="modificationRequest" Placeholder="Ej: 'añade un botón de cancelar'" FloatLabelType="FloatLabelType.Auto" Enabled="!isLoading"></SfTextBox>
                     <SfButton @onclick="InvokeRefinement" Disabled="@isLoading" CssClass="e-warning">
                         @if (isLoading && activeProcess == "refinement")
                         {
@@ -44,6 +45,7 @@
                         }
                         else
                         {
+
                             <span>Refinar</span>
                         }
                     </SfButton>
@@ -75,9 +77,9 @@
     </div>
 
     <div class="preview-panel">
-        <h2 style="position: sticky; top: 0; background: white; padding-bottom: 10px;">Vista Previa en Vivo (Simulación Escritorio)</h2>
+        <h2 style="position: sticky; top: 0; background: white; padding-bottom: 10px;">Vista Previa en Vivo</h2>
         <div class="iframe-desktop-wrapper" style="width: 100%; overflow-x: auto; border: 1px solid #ccc; border-radius: 8px; background-color: #f8f9fa; padding: 20px;">
-            <iframe style="width: 1200px; height: 810px; border: none; display: block; margin: 0 auto; background-color: white; box-shadow: 0 0 15px rgba(0,0,0,0.1);"
+            <iframe style="width: 1440px; height: 810px; border: none; display: block; margin: 0 auto; background-color: white; box-shadow: 0 0 15px rgba(0,0,0,0.1);"
                     sandbox="allow-scripts allow-same-origin"
                     srcdoc="@htmlToRender">
             </iframe>
@@ -87,7 +89,8 @@
 
 @code {
     private string userInput = string.Empty;
-    private string styleRequest = "moderno y profesional"; // Valor por defecto
+    private string inspirationUrl = string.Empty;
+    private string styleRequest = "moderno y profesional";
     private string modificationRequest = string.Empty;
     private string generatedCode = string.Empty;
     private string htmlToRender = "<div style='display:flex;justify-content:center;align-items:center;height:100%;color:#888;'><p>Aquí aparecerá tu componente...</p></div>";
@@ -97,89 +100,77 @@
 
     public record OrchestrationStep(string Title, string Content, string Color);
 
-    private void UpdateRenderableCode(string fullCode)
-    {
-        generatedCode = fullCode;
-        htmlToRender = fullCode;
-    }
-
-    private string ExtractJsonFromString(string text)
-    {
-        if (string.IsNullOrWhiteSpace(text)) return string.Empty;
-        var match = Regex.Match(text, @"\{.*\}", RegexOptions.Singleline);
-        if (match.Success)
-        {
-            return match.Value;
-        }
-        match = Regex.Match(text, @"\[.*\]", RegexOptions.Singleline);
-        if (match.Success)
-        {
-            return match.Value;
-        }
-        return text;
-    }
-
-    private async Task CopyCodeToClipboard()
-    {
-        if (!string.IsNullOrWhiteSpace(generatedCode))
-        {
-            await JSRuntime.InvokeVoidAsync("navigator.clipboard.writeText", generatedCode);
-        }
-    }
-
-    private string GetFileExtensionFromCode(string code)
-    {
-        var match = Regex.Match(code, @"<!--\s*Language:\s*(\w+)\s*-->");
-        return match.Success ? match.Groups[1].Value.ToLower() : "html";
-    }
-
-    private async Task DownloadCodeAsFile()
-    {
-        if (!string.IsNullOrWhiteSpace(generatedCode))
-        {
-            var extension = GetFileExtensionFromCode(generatedCode);
-            var fileName = $"component.{extension}";
-            var fileStream = new System.IO.MemoryStream(System.Text.Encoding.UTF8.GetBytes(generatedCode));
-            using var streamRef = new DotNetStreamReference(stream: fileStream);
-            await JSRuntime.InvokeVoidAsync("downloadFileFromStream", fileName, streamRef);
-        }
-    }
-
     private async Task InvokeInitialGeneration()
     {
         if (string.IsNullOrWhiteSpace(userInput) || isLoading) return;
+
         isLoading = true;
         activeProcess = "generation";
         orchestrationLog.Clear();
         generatedCode = string.Empty;
         var userIdea = userInput;
         var userStyle = styleRequest;
+        var userUrl = inspirationUrl;
+
         try
         {
-            orchestrationLog.Add(new OrchestrationStep("Paso 1: Petición de Usuario", $"Idea: {userIdea}\nEstilo: {userStyle}", "#007bff"));
+            // Validar y sanear la URL de inspiración
+            if (!string.IsNullOrWhiteSpace(userUrl) && !userUrl.StartsWith("http://") && !userUrl.StartsWith("https://"))
+            {
+                userUrl = "https://" + userUrl;
+            }
+
+            orchestrationLog.Add(new OrchestrationStep("Paso 1: Petición de Usuario", $"Idea: {userIdea}\nURL: {userUrl}\nEstilo: {userStyle}", "#007bff"));
             await InvokeAsync(StateHasChanged);
-            var designResult = await Kernel.InvokeAsync(Kernel.Plugins["DesignPlugin"]["GenerateConcept"], new() { ["idea"] = userIdea });
-            var designConceptJson = designResult.GetValue<string>()!;
-            orchestrationLog.Add(new OrchestrationStep("Paso 2: Plan Estructural (JSON)", designConceptJson, "#6f42c1"));
+
+            // PASO 1.5: ANÁLISIS WEB (Opcional)
+            string htmlReference = string.Empty;
+            if (!string.IsNullOrWhiteSpace(userUrl))
+            {
+                var webAnalyzerFunction = Kernel.Plugins["WebAnalyzerPlugin"]["ExtractMainHtmlContent"];
+                var analysisResult = await Kernel.InvokeAsync(webAnalyzerFunction, new() { ["url"] = userUrl });
+                htmlReference = analysisResult.GetValue<string>()!;
+                orchestrationLog.Add(new OrchestrationStep("Paso 2: HTML de Referencia Extraído", htmlReference.Substring(0, Math.Min(htmlReference.Length, 500)) + "...", "#17a2b8"));
+                await InvokeAsync(StateHasChanged);
+                await Task.Delay(1500);
+            }
+
+            // PASO 2: ARQUITECTO CONCEPTUAL (ahora híbrido)
+            var designArguments = new KernelArguments { ["idea"] = userIdea, ["html_reference"] = htmlReference };
+            var designResult = await Kernel.InvokeAsync(Kernel.Plugins["DesignPlugin"]["GenerateConcept"], designArguments);
+            var designConceptJson = ExtractJsonFromString(designResult.GetValue<string>()!);
+            orchestrationLog.Add(new OrchestrationStep("Paso 3: Plan Estructural (JSON)", designConceptJson, "#6f42c1"));
             await InvokeAsync(StateHasChanged);
-            await Task.Delay(1500); // Evitar error 429
+            await Task.Delay(1500);
+
+            // PASO 3: DISEÑADOR VISUAL
             var styleArguments = new KernelArguments { ["design_plan_json"] = designConceptJson, ["style_request"] = userStyle };
             var styleResult = await Kernel.InvokeAsync(Kernel.Plugins["StylingPlugin"]["ApplyVisualTheme"], styleArguments);
             var rawStyleOutput = styleResult.GetValue<string>()!;
             var enrichedPlanJson = ExtractJsonFromString(rawStyleOutput);
-            if (string.IsNullOrWhiteSpace(enrichedPlanJson))
+
+            // Manejo robusto del JSON
+            string formattedJson;
+            try
             {
-                throw new InvalidOperationException("El Diseñador Visual (StylingPlugin) no generó un plan de estilo en formato JSON válido.");
+                formattedJson = System.Text.Json.JsonDocument.Parse(enrichedPlanJson).RootElement.ToString();
             }
-            var formattedJson = System.Text.Json.JsonDocument.Parse(enrichedPlanJson).RootElement.ToString();
-            orchestrationLog.Add(new OrchestrationStep("Paso 3: Plan Enriquecido con Estilo (JSON)", formattedJson, "#e83e8c"));
+            catch (System.Text.Json.JsonException jsonEx)
+            {
+                orchestrationLog.Add(new OrchestrationStep("Error Crítico: Fallo del Diseñador Visual", $"El StylingPlugin devolvió un JSON incompleto o malformado.\n\nError: {jsonEx.Message}\n\nSalida Recibida:\n{rawStyleOutput}", "#dc3545"));
+                return; // Detener la orquestación
+            }
+
+            orchestrationLog.Add(new OrchestrationStep("Paso 4: Plan Enriquecido con Estilo (JSON)", formattedJson, "#e83e8c"));
             await InvokeAsync(StateHasChanged);
-            await Task.Delay(1500); // Evitar error 429
-            var codeFunction = Kernel.Plugins["CodePlugin"]["GenerateCode"];
-            var codeResult = await Kernel.InvokeAsync(codeFunction, new() { ["design_concept"] = enrichedPlanJson });
-            var newCode = codeResult.GetValue<string>()!;
-            orchestrationLog.Add(new OrchestrationStep("Paso 4: Código Final Generado", newCode, "#28a745"));
-            UpdateRenderableCode(newCode);
+            await Task.Delay(1500);
+
+            // PASO 4: PROGRAMADOR FRONT-END
+            var codeResult = await Kernel.InvokeAsync(Kernel.Plugins["CodePlugin"]["GenerateCode"], new() { ["design_concept"] = enrichedPlanJson });
+            var htmlCode = codeResult.GetValue<string>()!;
+            orchestrationLog.Add(new OrchestrationStep("Paso 5: Código HTML/CSS Generado", htmlCode, "#28a745"));
+
+            UpdateRenderableCode(htmlCode);
         }
         catch (Exception ex)
         {
@@ -193,6 +184,44 @@
         }
     }
 
+    // --- Resto de métodos sin cambios ---
+    private void UpdateRenderableCode(string fullCode)
+    {
+        generatedCode = fullCode;
+        htmlToRender = fullCode;
+    }
+    private string ExtractJsonFromString(string text)
+    {
+        if (string.IsNullOrWhiteSpace(text)) return string.Empty;
+        var match = Regex.Match(text, @"\{.*\}", RegexOptions.Singleline);
+        if (match.Success) return match.Value;
+        match = Regex.Match(text, @"\[.*\]", RegexOptions.Singleline);
+        if (match.Success) return match.Value;
+        return text;
+    }
+    private async Task CopyCodeToClipboard()
+    {
+        if (!string.IsNullOrWhiteSpace(generatedCode))
+        {
+            await JSRuntime.InvokeVoidAsync("navigator.clipboard.writeText", generatedCode);
+        }
+    }
+    private string GetFileExtensionFromCode(string code)
+    {
+        var match = Regex.Match(code, @"<!--\s*Language:\s*(\w+)\s*-->");
+        return match.Success ? match.Groups[1].Value.ToLower() : "html";
+    }
+    private async Task DownloadCodeAsFile()
+    {
+        if (!string.IsNullOrWhiteSpace(generatedCode))
+        {
+            var extension = GetFileExtensionFromCode(generatedCode);
+            var fileName = $"component.{extension}";
+            var fileStream = new System.IO.MemoryStream(System.Text.Encoding.UTF8.GetBytes(generatedCode));
+            using var streamRef = new DotNetStreamReference(stream: fileStream);
+            await JSRuntime.InvokeVoidAsync("downloadFileFromStream", fileName, streamRef);
+        }
+    }
     private async Task InvokeRefinement()
     {
         if (string.IsNullOrWhiteSpace(modificationRequest) || string.IsNullOrWhiteSpace(generatedCode) || isLoading) return;
@@ -202,18 +231,18 @@
         {
             var request = modificationRequest;
             modificationRequest = string.Empty;
-            orchestrationLog.Add(new OrchestrationStep("Paso 4: Petición de Refinamiento", request, "#fd7e14"));
+            orchestrationLog.Add(new OrchestrationStep("Petición de Refinamiento", request, "#6610f2"));
             await InvokeAsync(StateHasChanged);
             var refinementFunction = Kernel.Plugins["RefinementPlugin"]["ModifyCode"];
             var arguments = new KernelArguments
-                {
-                    ["existing_code"] = generatedCode,
-                    ["modification_request"] = request
-                };
+            {
+                ["existing_code"] = generatedCode,
+                ["modification_request"] = request
+            };
             var refinementResult = await Kernel.InvokeAsync(refinementFunction, arguments);
             var refinedCode = refinementResult.GetValue<string>() ?? "Error";
-            orchestrationLog.RemoveAll(step => step.Title.Contains("Refinado") || step.Title.Contains("Código Final Generado"));
-            orchestrationLog.Add(new OrchestrationStep("Paso 5: Código Refinado", refinedCode, "#17a2b8"));
+            orchestrationLog.RemoveAll(step => step.Title.Contains("Refinado") || step.Title.Contains("Final Generado"));
+            orchestrationLog.Add(new OrchestrationStep("Código Refinado", refinedCode, "#17a2b8"));
             UpdateRenderableCode(refinedCode);
         }
         catch (Exception ex)
