@@ -1,77 +1,134 @@
 ﻿@page "/"
 @rendermode InteractiveServer
 @using Microsoft.SemanticKernel
+@using System.Text.RegularExpressions
 @inject Kernel Kernel
+@inject IJSRuntime JSRuntime
 
-<PageTitle>Prototype IA v2</PageTitle>
+<PageTitle>Prototype IA v3</PageTitle>
 
-<div style="max-width: 900px; margin: auto; font-family: sans-serif;">
+<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 40px; max-width: 95%; margin: auto; font-family: sans-serif;">
 
-    <h1>Prototype IA con Refinamiento</h1>
-    <p>Introduce una idea, genera el código y luego pide modificaciones para refinarlo.</p>
+    <div class="control-panel">
+        <h1>Prototype IA con Refinamiento</h1>
+        <p>Introduce una idea, genera el código, refínalo y observa el resultado en vivo.</p>
 
-    <div style="display: flex; gap: 8px; margin-top: 20px;">
-        <input @bind="userInput" placeholder="Describe la UI que quieres construir..." @onkeyup="HandleInitialKeyUp" disabled="@isLoading" style="flex-grow: 1; padding: 10px; border-radius: 8px; border: 1px solid #ccc;" />
-        <button @onclick="InvokeInitialGeneration" disabled="@isLoading" style="padding: 10px 20px; border: none; background-color: #007bff; color: white; border-radius: 8px; cursor: pointer;">
-            @if (isLoading && activeProcess == "generation")
-            {
-                <span>Generando...</span>
-            }
-            else
-            {
-
-                <span>Generar</span>
-            }
-        </button>
-    </div>
-
-    @if (orchestrationLog.Any())
-    {
-        <div style="margin-top: 30px; border: 1px solid #eee; border-radius: 8px; padding: 20px;">
-            <h3>Proceso de Orquestación:</h3>
-            @foreach (var step in orchestrationLog)
-            {
-                <div style="margin-top: 15px; padding: 10px; border-left: 4px solid @step.Color; background-color: #f8f9fa;">
-                    <h4 style="margin-top:0;">@step.Title</h4>
-                    <pre style="white-space: pre-wrap; font-family: monospace; background-color: #fff; padding: 10px; border-radius: 5px; border: 1px solid #ddd;"><code>@step.Content</code></pre>
-                </div>
-            }
-        </div>
-    }
-
-    @if (!string.IsNullOrWhiteSpace(generatedCode))
-    {
-        <hr style="margin: 30px 0;" />
-        <h3>Paso 4: Refinar el Resultado</h3>
-        <p>¿No es perfecto? Pide un cambio:</p>
-        <div style="display: flex; gap: 8px; margin-top: 10px;">
-            <input @bind="modificationRequest" placeholder="Ej: 'añade un botón de cancelar' o 'cambia el color del título a rojo'" @onkeyup="HandleRefinementKeyUp" disabled="@isLoading" style="flex-grow: 1; padding: 10px; border-radius: 8px; border: 1px solid #ccc;" />
-            <sfbutton @onclick="InvokeRefinement" disabled="@isLoading" style="padding: 10px 20px; border: none; background-color: #fd7e14; color: white; border-radius: 8px; cursor: pointer;">
-                @if (isLoading && activeProcess == "refinement")
+        <div style="display: flex; gap: 8px; margin-top: 20px;">
+            <input @bind="userInput" placeholder="Describe la UI que quieres construir..." @onkeyup="HandleInitialKeyUp" disabled="@isLoading" style="flex-grow: 1; padding: 10px; border-radius: 8px; border: 1px solid #ccc;" />
+            <button @onclick="InvokeInitialGeneration" disabled="@isLoading" style="padding: 10px 20px; border: none; background-color: #007bff; color: white; border-radius: 8px; cursor: pointer;">
+                @if (isLoading && activeProcess == "generation")
                 {
-                    <span>Refinando...</span>
+                    <span>Generando...</span>
                 }
                 else
                 {
-
-                    <span>Refinar</span>
+                    <span>Generar</span>
                 }
-            </sfbutton>
+            </button>
         </div>
-    }
+
+        @if (orchestrationLog.Any())
+        {
+            <div style="margin-top: 30px; border: 1px solid #eee; border-radius: 8px; padding: 20px;">
+                <h3>Proceso de Orquestación:</h3>
+                @foreach (var step in orchestrationLog)
+                {
+                    <div style="margin-top: 15px; padding: 10px; border-left: 4px solid @step.Color; background-color: #f8f9fa;">
+                        <h4 style="margin-top:0;">@step.Title</h4>
+                        <pre style="white-space: pre-wrap; font-family: monospace; background-color: #fff; padding: 10px; border-radius: 5px; border: 1px solid #ddd;"><code>@step.Content</code></pre>
+                    </div>
+                }
+
+                @if (!string.IsNullOrWhiteSpace(generatedCode))
+                {
+                    <div class="code-actions" style="margin-top: 20px; display: flex; gap: 10px;">
+                        <button class="btn btn-secondary" @onclick="CopyCodeToClipboard">Copiar Código</button>
+                        <button class="btn btn-success" @onclick="DownloadCodeAsFile">Descargar Fichero</button>
+                    </div>
+                }
+            </div>
+        }
+
+        @if (!string.IsNullOrWhiteSpace(generatedCode))
+        {
+            <hr style="margin: 30px 0;" />
+            <h3>Paso 4: Refinar el Resultado</h3>
+            <p>¿No es perfecto? Pide un cambio:</p>
+            <div style="display: flex; gap: 8px; margin-top: 10px;">
+                <input @bind="modificationRequest" placeholder="Ej: 'añade un botón de cancelar' o 'cambia el color del título a rojo'" @onkeyup="HandleRefinementKeyUp" disabled="@isLoading" style="flex-grow: 1; padding: 10px; border-radius: 8px; border: 1px solid #ccc;" />
+                <button @onclick="InvokeRefinement" disabled="@isLoading" style="padding: 10px 20px; border: none; background-color: #fd7e14; color: white; border-radius: 8px; cursor: pointer;">
+                    @if (isLoading && activeProcess == "refinement")
+                    {
+                        <span>Refinando...</span>
+                    }
+                    else
+                    {
+                        <span>Refinar</span>
+                    }
+                </button>
+            </div>
+        }
+    </div>
+
+    <div class="preview-panel">
+        <h2 style="position: sticky; top: 0; background: white; padding-bottom: 10px;">Vista Previa en Vivo</h2>
+        <iframe style="width: 100%; height: 80vh; border: 1px solid #ccc; border-radius: 8px;"
+                sandbox="allow-scripts allow-same-origin"
+                srcdoc="@htmlToRender">
+        </iframe>
+    </div>
 
 </div>
+
 
 @code {
     private string userInput = string.Empty;
     private string modificationRequest = string.Empty;
     private string generatedCode = string.Empty;
+    private string htmlToRender = "<div style='display:flex;justify-content:center;align-items:center;height:100%;color:#888;'><p>Aquí aparecerá tu componente...</p></div>";
     private string activeProcess = string.Empty;
 
     private bool isLoading = false;
     private List<OrchestrationStep> orchestrationLog = new();
 
     public record OrchestrationStep(string Title, string Content, string Color);
+
+    private void UpdateRenderableCode(string fullCode)
+    {
+        generatedCode = fullCode;
+        htmlToRender = fullCode;
+    }
+
+    private async Task CopyCodeToClipboard()
+    {
+        if (!string.IsNullOrWhiteSpace(generatedCode))
+        {
+            await JSRuntime.InvokeVoidAsync("navigator.clipboard.writeText", generatedCode);
+            // Aquí podrías añadir una notificación visual para el usuario.
+        }
+    }
+
+    private string GetFileExtensionFromCode(string code)
+    {
+        var match = Regex.Match(code, @"<!--\s*Language:\s*(\w+)\s*-->");
+        if (match.Success)
+        {
+            return match.Groups[1].Value.ToLower();
+        }
+        return "html"; // Extensión por defecto si no se encuentra el comentario
+    }
+
+    private async Task DownloadCodeAsFile()
+    {
+        if (!string.IsNullOrWhiteSpace(generatedCode))
+        {
+            var extension = GetFileExtensionFromCode(generatedCode);
+            var fileName = $"component.{extension}";
+            var fileStream = new System.IO.MemoryStream(System.Text.Encoding.UTF8.GetBytes(generatedCode));
+            using var streamRef = new DotNetStreamReference(stream: fileStream);
+            await JSRuntime.InvokeVoidAsync("downloadFileFromStream", fileName, streamRef);
+        }
+    }
 
     private async Task HandleInitialKeyUp(KeyboardEventArgs e)
     {
@@ -107,8 +164,10 @@
 
             var codeFunction = Kernel.Plugins["CodePlugin"]["GenerateCode"];
             var codeResult = await Kernel.InvokeAsync(codeFunction, new() { ["design_concept"] = designConcept });
-            generatedCode = codeResult.GetValue<string>() ?? "Error";
-            orchestrationLog.Add(new OrchestrationStep("Paso 3: Código Resultante", generatedCode, "#28a745"));
+            var newCode = codeResult.GetValue<string>() ?? "Error";
+            orchestrationLog.Add(new OrchestrationStep("Paso 3: Código Resultante", newCode, "#28a745"));
+
+            UpdateRenderableCode(newCode);
         }
         catch (Exception ex)
         {
@@ -139,17 +198,17 @@
 
             var refinementFunction = Kernel.Plugins["RefinementPlugin"]["ModifyCode"];
             var arguments = new KernelArguments
-            {
-                ["existing_code"] = generatedCode,
-                ["modification_request"] = request
-            };
+                {
+                    ["existing_code"] = generatedCode,
+                    ["modification_request"] = request
+                };
             var refinementResult = await Kernel.InvokeAsync(refinementFunction, arguments);
+            var refinedCode = refinementResult.GetValue<string>() ?? "Error";
 
-            generatedCode = refinementResult.GetValue<string>() ?? "Error";
+            orchestrationLog.RemoveAll(step => step.Title.Contains("Refinado")); // Elimina refinamientos previos
+            orchestrationLog.Add(new OrchestrationStep("Paso 5: Código Refinado", refinedCode, "#17a2b8"));
 
-            // Reemplazar el último paso del log (el código antiguo) con el nuevo código refinado.
-            orchestrationLog.RemoveAt(orchestrationLog.Count - 1);
-            orchestrationLog.Add(new OrchestrationStep("Paso 5: Código Refinado", generatedCode, "#17a2b8"));
+            UpdateRenderableCode(refinedCode);
         }
         catch (Exception ex)
         {
