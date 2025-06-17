@@ -35,7 +35,7 @@ builder.Services.AddSingleton<Kernel>(sp =>
     if (!string.IsNullOrEmpty(googleGeminiApiKey))
     {
         kernelBuilder.AddGoogleAIGeminiChatCompletion(
-            modelId: "gemini-1.5-flash", 
+            modelId: "gemini-2.0-flash-lite", 
             apiKey: googleGeminiApiKey); 
         hasGemini = true;
     }
@@ -48,11 +48,11 @@ builder.Services.AddSingleton<Kernel>(sp =>
     }
 
     var pluginsDirectory = Path.Combine(Directory.GetCurrentDirectory(), "Plugins");
-    //kernel.ImportPluginFromPromptDirectory(pluginsDirectory, "DesignPlugin");
-    //kernel.ImportPluginFromPromptDirectory(pluginsDirectory, "CodePlugin");
+
     kernel.ImportPluginFromPromptDirectory(Path.Combine(pluginsDirectory, "DesignPlugin"), "DesignPlugin");
     kernel.ImportPluginFromPromptDirectory(Path.Combine(pluginsDirectory, "CodePlugin"), "CodePlugin");
     kernel.ImportPluginFromPromptDirectory(Path.Combine(pluginsDirectory, "RefinementPlugin"), "RefinementPlugin");
+    kernel.ImportPluginFromPromptDirectory(Path.Combine(pluginsDirectory, "StylingPlugin"), "StylingPlugin");
 
     return kernel;
 });

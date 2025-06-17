@@ -1,0 +1,25 @@
+{
+  "schema": 1,
+  "type": "prompt_template",
+  "description": "Aplica un tema visual y de estilo a un plan de diseño estructural en formato JSON, enriqueciéndolo con propiedades de diseño como colores, fuentes y CSS.",
+  "template_format": "semantic-kernel",
+  "input_variables": [
+    {
+      "name": "design_plan_json",
+      "description": "El plan de diseño estructural en formato JSON, generado por el arquitecto conceptual.",
+      "required": true
+    },
+    {
+      "name": "style_request",
+      "description": "Una descripción en lenguaje natural del estilo deseado (ej: 'moderno y oscuro', 'profesional y minimalista', 'divertido y colorido').",
+      "required": true
+    }
+  ],
+  "execution_settings": {
+    "default": {
+      "max_tokens": 2000,
+      "temperature": 0.4,
+      "response_format": { "type": "json_object" }
+    }
+  }
+}
