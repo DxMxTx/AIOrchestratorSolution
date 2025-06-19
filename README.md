@@ -1,6 +1,6 @@
 # AIOrchestratorSolution
 
-Pequeña aplicación para aprender el framework de Microsoft sobre planificación de agentes Semantic Kernel.
+Pequeña aplicación para aprender a utilizar el framework de Microsoft sobre planificación de agentes Semantic Kernel.
 
 La aplicación está creada en Blazor y como hemos comentado utiliza Semantic Kernel con su funcionalidad de agentes. 
 
