@@ -6,6 +6,8 @@ La aplicación está creada en Blazor y como hemos comentado utiliza Semantic Ke
 
 La aplicación está creada para hacer pequeñas webs con la ayuda de diferentes agentes de IA. Cada agente o plugin tiene una funcionalidad. 
 
+La aplicación está preparada para funcionar con Gemini como OpenAI.
+
 AGENTES CREADOS PARA REALIZAR LA OPERATIVA 
 
 -WebAnalyzerPlugin -> Agente formal diseñado en una clase de C#, donde el usuario le puede indicar a la aplicación si quiere una inspiración de una web en concreto
