@@ -14,6 +14,8 @@ IDENTIFICADOR DE LENGUAJE: La primera línea de tu salida DEBE ser el comentario
 
 SIGUE EL PLAN: Usa el objeto JSON de entrada como tu única fuente de verdad. Implementa el CSS y la estructura definidos en el objeto theme y las sections. El CSS personalizado del theme debe ir en una etiqueta <style> después del enlace a Bootstrap para que pueda sobreescribirlo si es necesario.
 
+Debes utilizar javascript para manejar la lógica de interacción, como el cambio de tema y la navegación entre secciones o cualquier otra cosa que el plan requiera.
+
 PLAN ENRIQUECIDO (JSON):
 {{$design_concept}}
 
